@@ -1,9 +1,13 @@
+<p align="center">
+  <img src="assets/vuln99_banner.png" alt="Vuln99 — The Live-Fire Range for Glacier, made by HackOps Academy" width="100%">
+</p>
+
 # Vuln99 — Merged Vulnerable Training Storefront
 
 Vuln99 merges two prior HackOps Academy projects into one app:
 
 - **Glacier's `vulnerable_test_app.py`** — a lean Flask testbed with detection
-  signatures purpose-built to match Glacier's active scanner (`active/scanner.py`):
+  signatures purpose-built to match [Glacier's](https://github.com/hackops-academy/glacier) active scanner (`active/scanner.py`):
   reflected XSS, error-based SQLi, boolean-blind SQLi, time-blind SQLi,
   path traversal, command injection (reflected + blind), and open redirect
   all use the *exact same route paths, parameter names, and error-message
@@ -16,17 +20,54 @@ storefront breadth, and generalizes the difficulty system to be **per
 vulnerability** (24 of them) rather than per page, configurable live from
 an in-app admin settings screen.
 
-## Quick start
+**📖 Learn Vuln99 like a professional:** the full course is live at
+**[hackops-academy.github.io/vuln99](https://hackops-academy.github.io/vuln99/)**
+— 13 modules mapping all 24 vulnerabilities to specific Glacier commands,
+plus a full combined Glacier × Vuln99 methodology. It's the companion to
+**[Glacier's own course](https://hackops-academy.github.io/glacier/)** — read
+them together.
 
-The fastest path is the setup script — it creates a venv, installs deps,
-and starts the app in one command:
+---
+
+## ⚠️ Before you install
+
+This app contains **real, working** SQL injection, OS command injection,
+XXE, SSRF, SSTI, and insecure deserialization. It binds to `127.0.0.1`
+(localhost) by default, and should stay that way unless you're on an
+isolated lab VM with no route to the internet or a shared/corporate
+network. See [Network binding](#network-binding-for-scanners--packet-capture)
+below before you ever change that.
+
+---
+
+## 📥 Download & Setup
+
+### 1. Requirements
+
+- **Python 3.9+**
+- `pip` and `venv` (both ship with a standard Python install)
+- macOS, Linux, or Windows (PowerShell)
+
+### 2. Clone the repository
 
 ```bash
-./setup.sh                 # macOS/Linux
+git clone https://github.com/hackops-academy/vuln99.git
+cd vuln99
+```
+
+### 3. Install & run
+
+The fastest path is the setup script — it creates a venv, installs
+dependencies, and starts the app in one command:
+
+```bash
+./setup.sh                 # macOS / Linux
+```
+```powershell
 .\setup.ps1                # Windows PowerShell
 ```
 
-Or by hand:
+Or set it up by hand, if you'd rather see each step:
 
 ```bash
 python3 -m venv venv
@@ -35,14 +76,32 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Then open **http://127.0.0.1:5099**. The database is SQLite, reseeded from
-scratch every time the process starts, so you always boot into a known
-state.
+### 4. Open it
 
-⚠️ **Localhost / isolated lab VM only, by default.** This app contains
-real, working SQL injection, OS command injection, XXE, SSRF, SSTI, and
-insecure deserialization. `run.py` binds to `127.0.0.1` unless you say
-otherwise — see [Network binding](#network-binding-for-scanners--packet-capture) below.
+Go to **http://127.0.0.1:5099** in your browser.
+
+The database is SQLite and **reseeds from scratch every time the process
+starts** — every launch boots into the same known, clean state, so you
+never have to manually reset it between practice sessions.
+
+### 5. (Optional) Verify the install
+
+A pytest smoke suite boots the app and hits every route at every
+difficulty tier to catch a broken install before you blame the scanner
+for a bad target:
+
+```bash
+./setup.sh --test          # macOS/Linux
+.\setup.ps1 -Test          # Windows
+# or, with the venv already active:
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+This does **not** verify the vulnerabilities themselves — that's the
+app's whole point — just that nothing 500s.
+
+---
 
 ## Test accounts
 
@@ -64,7 +123,7 @@ buttons — or by editing rows directly in the `settings` table:
 - **medium** — a partial, commonly-seen-in-the-wild mitigation that's
   still bypassable (blacklist filtering, naive escaping, rate-limiting
   mistaken for access control, etc.) — good for practicing filter/WAF
-  bypass techniques. Every one of the 24 vulns now has a *genuinely*
+  bypass techniques. Every one of the 24 vulns has a *genuinely*
   bypassable medium tier — see `VULNERABILITIES.md` for exact payloads.
 - **hard** — the properly fixed version (parameterized queries,
   allow-lists, real session-based auth checks, CSP-safe output encoding).
@@ -85,8 +144,8 @@ For attack payloads and step-by-step walkthroughs for every row below, see
 | `product_sqli` | Error-based SQL injection | `/product` |
 | `blind_sqli_bool` | Boolean-blind SQL injection | `/blind-product` |
 | `blind_sqli_time` | Time-blind SQL injection | `/slow-product` |
-| `recommend_sqli` | Cookie-based SQL injection *(new, ported from VulnMart)* | `/recommend` |
-| `header_sqli` | HTTP header SQL injection *(new, ported from VulnMart)* | `/category` (sink: `/admin/logs`) |
+| `recommend_sqli` | Cookie-based SQL injection | `/recommend` |
+| `header_sqli` | HTTP header SQL injection | `/category` (sink: `/admin/logs`) |
 | `reflected_xss` | Reflected XSS | `/search` |
 | `stored_xss` | Stored XSS | product reviews (`/product`, `/reviews`) |
 | `csrf` | CSRF | `/checkout` |
@@ -107,13 +166,13 @@ For attack payloads and step-by-step walkthroughs for every row below, see
 
 Every vulnerable route has a `/safe-*` sibling where one exists
 (`/safe-search`, `/safe-product`, `/safe-read-file`, `/safe-ping`,
-`/safe-go`) showing the correctly-guarded implementation side by side,
-same pattern Glacier's test app used — useful for confirming a scanner
-correctly stays quiet on hardened endpoints.
+`/safe-go`) showing the correctly-guarded implementation side by side —
+useful for confirming a scanner correctly stays quiet on hardened
+endpoints.
 
 ## Admin panel
 
-`/admin` now shows live stats (users, orders, reviews, activity-log
+`/admin` shows live stats (users, orders, reviews, activity-log
 entries, and a low/medium/hard breakdown of every vuln's current
 setting) plus quick links to:
 
@@ -169,21 +228,6 @@ changes, bulk resets) go to `logs/events.log` — both rotate at ~2MB.
 Handy for lining up what the app saw against a simultaneous nmap scan or
 Wireshark capture during a class or CTF run.
 
-## Testing
-
-A pytest smoke suite (`tests/test_smoke.py`) boots the app and exercises
-every route at every difficulty tier to catch accidental breakage — it
-does **not** verify the vulnerabilities themselves (that's the app's
-whole point), just that nothing 500s.
-
-```bash
-./setup.sh --test          # macOS/Linux
-.\setup.ps1 -Test          # Windows
-# or, with the venv already active:
-pip install -r requirements-dev.txt
-pytest -q
-```
-
 ## Project layout
 
 ```
@@ -204,47 +248,28 @@ vuln99/
   chrome.py                  shared page shell (nav/footer/CSS)
   helpers.py                 session helpers + IDOR enumeration guard
   sample_files/               documents for the path-traversal lab
-  routes/
-    home.py                  catalog + QA diagnostics panel (every route, tagged)
-    auth.py                  login / register / logout
-    search.py                product search
-    product.py               product detail + blind/time-blind lookup
-    reviews.py               review submission (stored XSS sink)
-    account.py                profile, avatar upload, orders/IDOR
-    cart.py                   cart + checkout
-    recommend.py               "Recommended for you" (cookie SQLi) — new
-    category.py                 category browsing (header SQLi -> activity_logs) — new
-    fileops.py                document viewer (path traversal/LFI)
-    diagnostics.py             network ping tool (command injection)
-    redirect_.py               /go open redirect
-    ssrf.py                     admin image import (SSRF)
-    xxe.py                      admin order import (XXE)
-    ssti.py                     admin email preview (SSTI)
-    admin.py                    admin panel + difficulty settings + activity logs
-    misc.py                     /version info-disclosure endpoint
+  routes/                     one file per feature area — see repo for full list
 ```
 
 ## Using with Glacier
 
-Point Glacier's active scanner at `http://127.0.0.1:5099/` with the
-`broken_admin`/injection-family vulnerabilities set to **low** (the
-default) — the route paths, parameter names (`username`/`password`,
-`q`, `id`, `file`, `host`, `url`), and SQL error format (`sqlite3.OperationalError`)
-match what `active/scanner.py`'s `check_*` functions already expect, so
-existing Glacier scans against the old `vulnerable_test_app.py` continue
-to work unmodified against Vuln99.
+Point [Glacier's](https://hackops-academy.github.io/glacier/) active
+scanner at `http://127.0.0.1:5099/` with the `broken_admin`/injection-family
+vulnerabilities set to **low** (the default) — the route paths, parameter
+names (`username`/`password`, `q`, `id`, `file`, `host`, `url`), and SQL
+error format (`sqlite3.OperationalError`) match what `active/scanner.py`'s
+`check_*` functions already expect, so existing Glacier scans against the
+old `vulnerable_test_app.py` continue to work unmodified against Vuln99.
 
-## What changed in this revision
+For the full walkthrough — every one of the 24 vulnerabilities mapped to
+a specific Glacier module, plus a combined methodology — see
+**[Vuln99's course](https://hackops-academy.github.io/vuln99/)**, written
+as the companion to [Glacier's course](https://hackops-academy.github.io/glacier/).
 
-- **Depth:** three vulns whose `medium` tier was previously identical (or
-  nearly identical) to `hard` — `ssrf`, `insecure_deserialization`, and
-  `idor_orders` — now have a genuinely distinct, bypassable medium
-  mitigation. Full payloads in `VULNERABILITIES.md`.
-- **New vulns ported from VulnMart:** `recommend_sqli` (cookie-based
-  SQLi on `/recommend`) and `header_sqli` (HTTP header SQLi on
-  `/category`, surfaced via the new admin Activity Logs page).
-- **Admin UX:** live stats dashboard, bulk difficulty set-all, activity
-  log viewer.
-- **Ops:** `config.py` (env-driven host/port/debug), `logging_setup.py`
-  (access + event logs), `setup.sh`/`setup.ps1` one-command installers,
-  `tests/test_smoke.py` pytest suite.
+## License
+
+MIT License — see `LICENSE` for details.
+
+---
+
+*Built by HackOps Academy — the live-fire range for [Glacier](https://github.com/hackops-academy/glacier).*
