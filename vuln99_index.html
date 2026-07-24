@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vuln99 — The live-fire range for Glacier</title>
+<meta name="description" content="A hands-on course for running Vuln99 as the live-fire practice range for Glacier's scanner.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#050709; --bg-panel:#0a0e17; --bg-panel-2:#0d1721; --bg-card:#0c1620;
+    --border:#1e3646; --border-soft:#152a38;
+    --ice-mid:#1c6488; --ice-bright:#3ea7d6; --ice-glow:#7ee8ff; --ice-glow-2:#9fe8ff;
+    --red:#ff4d4d; --red-glow:#ff8a8a; --red-bg:#1c0e0e; --red-border:#5a2222;
+    --amber:#febc2e; --green:#28c840;
+    --text-primary:#e4f1f7; --text-body:#a9c7d8; --text-muted:#5f8ba3;
+    --mono:'JetBrains Mono','Courier New',monospace; --sans:'IBM Plex Sans',-apple-system,sans-serif;
+    --sp-1:8px; --sp-2:16px; --sp-3:24px; --sp-4:32px; --sp-5:40px; --sp-6:48px; --sp-7:64px; --sp-8:80px;
+    --content-w:760px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--bg-void);color:var(--text-body);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased;}
+  a{color:var(--ice-glow-2);}
+  ::selection{background:var(--ice-mid);color:#fff;}
+
+  .grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(var(--border-soft) 1px, transparent 1px),linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+    background-size:40px 40px;opacity:.35;mask-image:linear-gradient(to bottom, black, transparent 85%);}
+
+  .crosslink{position:relative;z-index:2;background:#0d1721;border-bottom:1px solid var(--border);
+    font-family:var(--mono);font-size:13px;padding:10px 24px;text-align:center;color:var(--text-muted);}
+  .crosslink a{color:var(--ice-glow);font-weight:600;}
+  .crosslink b{color:var(--red-glow);}
+
+  .ethics{position:relative;z-index:2;background:#150c0c;border-bottom:1px solid #3a1f1f;color:#ffb3ae;
+    font-family:var(--mono);font-size:13px;padding:10px 24px;text-align:center;}
+  .ethics b{color:var(--red);} .ethics span{color:#e4f1f7;}
+
+  header.hero{position:relative;z-index:1;overflow:hidden;padding:var(--sp-8) var(--sp-3) var(--sp-7);border-bottom:1px solid var(--border);}
+  .hero-inner{max-width:900px;margin:0 auto;position:relative;z-index:3;}
+  .term-chrome{display:inline-flex;align-items:center;gap:var(--sp-1);background:var(--bg-panel-2);border:1px solid var(--border);
+    border-radius:6px;padding:6px 14px 6px 10px;margin:0 0 var(--sp-4);font-family:var(--mono);font-size:12px;color:var(--text-muted);}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .dot.r{background:#ff5f57;} .dot.y{background:var(--amber);} .dot.g{background:var(--green);}
+  h1.wordmark{font-family:var(--mono);font-weight:800;font-size:clamp(48px,9vw,100px);letter-spacing:-2px;margin:0 0 var(--sp-3);
+    color:var(--ice-glow);text-shadow:0 0 40px rgba(126,232,255,.35);}
+  .hero p.lede{font-size:clamp(17px,2.2vw,21px);color:var(--text-primary);max-width:660px;margin:0 0 var(--sp-5);}
+  .hero p.lede em{color:var(--red-glow);font-style:normal;}
+  .cmd-line{font-family:var(--mono);font-size:14.5px;background:var(--bg-panel-2);border:1px solid var(--border);
+    border-radius:8px;padding:var(--sp-2) 20px;max-width:640px;color:var(--ice-glow-2);overflow-x:auto;white-space:nowrap;}
+  .cmd-line .p{color:var(--ice-bright);} .cmd-line .c{color:var(--text-muted);}
+  .cursor{display:inline-block;width:8px;height:16px;background:var(--ice-glow);vertical-align:middle;animation:blink 1.1s steps(1) infinite;margin-left:2px;}
+  @keyframes blink{50%{opacity:0;}}
+  .hero-badges{display:flex;flex-wrap:wrap;gap:var(--sp-1) 10px;margin-top:var(--sp-5);}
+  .badge{font-family:var(--mono);font-size:12.5px;color:var(--ice-bright);border:1px solid var(--border);background:var(--bg-panel-2);padding:7px 12px;border-radius:20px;}
+  .badge.red{color:var(--red-glow);border-color:var(--red-border);background:var(--red-bg);}
+
+  .layout{position:relative;z-index:1;display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1280px;margin:0 auto;}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:48px 20px 48px 24px;border-right:1px solid var(--border);}
+  nav.toc::-webkit-scrollbar{width:6px;} nav.toc::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .toc-track{position:relative;padding-left:18px;}
+  .toc-crack{position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--border-soft);}
+  .toc-crack::after{content:"";position:absolute;left:0;top:0;width:100%;height:var(--progress,0%);
+    background:linear-gradient(var(--ice-glow), var(--ice-bright));box-shadow:0 0 8px var(--ice-glow);transition:height .15s linear;}
+  .toc-item{display:block;position:relative;font-family:var(--mono);font-size:13px;color:var(--text-muted);text-decoration:none;padding:9px 0 9px 16px;transition:color .15s;}
+  .toc-item .n{color:var(--text-muted);margin-right:8px;}
+  .toc-item:hover{color:var(--ice-glow-2);}
+  .toc-item.active{color:var(--ice-glow);} .toc-item.active .n{color:var(--ice-glow);}
+  .toc-item::before{content:"";position:absolute;left:-19px;top:18px;width:6px;height:6px;border-radius:50%;background:var(--border);}
+  .toc-item.active::before{background:var(--ice-glow);box-shadow:0 0 8px var(--ice-glow);}
+
+  main{padding:0 0 var(--sp-8);min-width:0;}
+  .module{padding:var(--sp-7) clamp(24px,4vw,64px) var(--sp-7);border-bottom:1px solid var(--border-soft);scroll-margin-top:20px;}
+  .module.m0{padding-top:var(--sp-6);}
+  .module > * { margin-top:var(--sp-3); }
+  .module > *:first-child { margin-top:0; }
+  .module > *:last-child { margin-bottom:0 !important; }
+  .module-eyebrow{font-family:var(--mono);font-size:13px;color:var(--ice-bright);display:flex;align-items:center;gap:var(--sp-2);}
+  .module-eyebrow .num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--ice-mid);border-radius:6px;color:var(--ice-glow);font-weight:700;}
+  .module h2{font-family:var(--mono);font-size:clamp(24px,3vw,34px);color:var(--text-primary);margin-top:var(--sp-2) !important;letter-spacing:-.5px;}
+  .module .goal{color:var(--text-muted);font-size:15px;max-width:var(--content-w);margin-top:var(--sp-1) !important;}
+  .module .goal + *{margin-top:var(--sp-5) !important;}
+  .module p{max-width:var(--content-w);font-size:15.5px;}
+  .module ul, .module ol{max-width:var(--content-w);padding-left:20px;font-size:15.5px;}
+  .module li{margin-bottom:var(--sp-1);}
+  .module h3{font-family:var(--mono);font-size:16px;color:var(--ice-glow-2);margin-top:var(--sp-5) !important;}
+  .module h3 + *{margin-top:var(--sp-2) !important;}
+  pre{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:var(--sp-2) 18px;overflow-x:auto;
+    font-family:var(--mono);font-size:13.5px;line-height:1.6;color:var(--ice-glow-2);max-width:var(--content-w);position:relative;}
+  pre .cm{color:var(--text-muted);} pre .kw{color:var(--ice-bright);} pre .str{color:#a3d977;} pre .rd{color:var(--red-glow);}
+  code.inline{font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:13.5px;color:var(--ice-glow-2);}
+  .tip{max-width:var(--content-w);padding:var(--sp-2) 18px;border-left:3px solid var(--ice-bright);background:var(--bg-panel-2);border-radius:0 8px 8px 0;font-size:14.5px;}
+  .tip b{color:var(--ice-glow);font-family:var(--mono);font-size:12.5px;letter-spacing:.5px;display:block;margin-bottom:var(--sp-1);}
+  .warn{max-width:var(--content-w);padding:var(--sp-2) 18px;border-left:3px solid var(--red);background:var(--red-bg);border-radius:0 8px 8px 0;font-size:14.5px;}
+  .warn b{color:var(--red);font-family:var(--mono);font-size:12.5px;letter-spacing:.5px;display:block;margin-bottom:var(--sp-1);}
+  .glacier-link{max-width:var(--content-w);padding:var(--sp-2) 18px;border-left:3px solid var(--red);background:var(--bg-panel-2);border-radius:0 8px 8px 0;font-size:14.5px;}
+  .glacier-link b{color:var(--red-glow);font-family:var(--mono);font-size:12.5px;letter-spacing:.5px;display:block;margin-bottom:var(--sp-1);}
+  table{border-collapse:collapse;max-width:var(--content-w);width:100%;font-size:13.5px;}
+  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;}
+  th{background:var(--bg-panel-2);color:var(--ice-glow-2);font-family:var(--mono);font-weight:600;font-size:12.5px;}
+  td{color:var(--text-body);} td code.inline, th code.inline{font-size:12.5px;}
+  .diff{display:inline-block;padding:2px 9px;border-radius:20px;font-family:var(--mono);font-size:11px;font-weight:600;}
+  .diff.low{background:rgba(255,77,77,.15);color:var(--red);border:1px solid rgba(255,77,77,.4);}
+  .diff.med{background:rgba(254,188,46,.15);color:var(--amber);border:1px solid rgba(254,188,46,.4);}
+  .diff.hard{background:rgba(40,200,64,.15);color:var(--green);border:1px solid rgba(40,200,64,.4);}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1);max-width:var(--content-w);font-family:var(--mono);font-size:12.5px;}
+  .flow .box{background:var(--bg-card);border:1px solid var(--ice-mid);color:var(--ice-glow-2);padding:8px 12px;border-radius:6px;}
+  .flow .arrow{color:var(--text-muted);}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);max-width:var(--content-w);}
+  @media (max-width:640px){.grid-2{grid-template-columns:1fr;}}
+  .kv{background:var(--bg-panel-2);border:1px solid var(--border);border-radius:8px;padding:var(--sp-2);}
+  .kv .k{font-family:var(--mono);font-size:11.5px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;}
+  .kv .v{color:var(--text-primary);font-size:14px;}
+  footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:40px 24px;text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--text-muted);}
+  footer a{color:var(--ice-bright);}
+
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr;}
+    nav.toc{position:sticky;top:0;height:auto;max-height:60px;overflow:hidden;display:flex;overflow-x:auto;padding:12px 16px;
+      border-right:none;border-bottom:1px solid var(--border);background:var(--bg-void);z-index:20;transition:max-height .2s ease;}
+    nav.toc.open{max-height:70vh;overflow-y:auto;flex-direction:column;}
+    .toc-track{padding-left:0;display:flex;gap:4px;flex-wrap:nowrap;}
+    nav.toc.open .toc-track{flex-direction:column;}
+    .toc-crack{display:none;}
+    .toc-item{white-space:nowrap;border:1px solid var(--border);border-radius:16px;padding:6px 12px;}
+    .toc-item::before{display:none;}
+    nav.toc.open .toc-item{white-space:normal;border-radius:6px;}
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<div class="crosslink">🧊 Part of the Glacier course pair — <a href="https://hackops-academy.github.io/glacier/">Glacier: the scanner →</a> · <b>Vuln99: the target ←</b> you are here</div>
+<div class="ethics"><b>LAB-ONLY —</b> <span>Vuln99 has real, working exploits. Run it only on localhost or an isolated lab VM with no route to the internet.</span></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="term-chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>&nbsp;127.0.0.1:5099 — professional-track</div>
+    <h1 class="wordmark">VULN99</h1>
+    <p class="lede">The live-fire range built specifically for <em>Glacier's scanner</em> — 24 independently-tunable vulnerabilities, real routes, real SQL errors, the same signatures Glacier's <code style="background:transparent;border:none;color:var(--red-glow);">active/scanner.py</code> already looks for.</p>
+    <div class="cmd-line"><span class="p">$</span> ./setup.sh <span class="c">&& open http://127.0.0.1:5099</span><span class="cursor"></span></div>
+    <div class="hero-badges">
+      <span class="badge">13 modules</span>
+      <span class="badge">24 vulnerabilities, 3 difficulty tiers each</span>
+      <span class="badge red">built to be scanned by Glacier</span>
+      <span class="badge">by HackOps Academy</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <div class="toc-track">
+      <div class="toc-crack" id="crack"></div>
+      <a class="toc-item" data-target="m0"><span class="n">00</span>Welcome &amp; legal</a>
+      <a class="toc-item" data-target="m1"><span class="n">01</span>Installation &amp; setup</a>
+      <a class="toc-item" data-target="m2"><span class="n">02</span>Anatomy of the range</a>
+      <a class="toc-item" data-target="m3"><span class="n">03</span>Difficulty tiers</a>
+      <a class="toc-item" data-target="m4"><span class="n">04</span>SQL injection family</a>
+      <a class="toc-item" data-target="m5"><span class="n">05</span>XSS &amp; CSRF</a>
+      <a class="toc-item" data-target="m6"><span class="n">06</span>Access control &amp; logic flaws</a>
+      <a class="toc-item" data-target="m7"><span class="n">07</span>File &amp; command vulnerabilities</a>
+      <a class="toc-item" data-target="m8"><span class="n">08</span>SSRF, XXE, SSTI &amp; deserialization</a>
+      <a class="toc-item" data-target="m9"><span class="n">09</span>Redirects &amp; misc findings</a>
+      <a class="toc-item" data-target="m10"><span class="n">10</span>Running Glacier against Vuln99</a>
+      <a class="toc-item" data-target="m11"><span class="n">11</span>The combined methodology</a>
+      <a class="toc-item" data-target="m12"><span class="n">12</span>Multi-VM labs &amp; next steps</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <section class="module m0" id="m0">
+      <div class="module-eyebrow"><span class="num">00</span>WELCOME</div>
+      <h2>What this course is</h2>
+      <p class="goal">Get oriented before you boot a target with real, working exploits.</p>
+      <p>Vuln99 merges two prior HackOps Academy projects — Glacier's own <code class="inline">vulnerable_test_app.py</code> and the fuller VulnMart storefront — into one range: 24 independently-tunable vulnerabilities behind a realistic e-commerce app, purpose-built so its routes, parameter names, and SQL error format match what <a href="https://hackops-academy.github.io/glacier/">Glacier's</a> active scanner already looks for. This course and Glacier's are meant to be read together — Glacier teaches the scanner, this one teaches the target and how the two fit.</p>
+      <div class="warn">
+        <b>LOCALHOST / ISOLATED LAB VM ONLY</b>
+        Vuln99 contains real, working SQL injection, OS command injection, XXE, SSRF, SSTI, and insecure deserialization. It binds to <code class="inline">127.0.0.1</code> by default — keep it that way unless you're on a host with no route to the internet or a shared network.
+      </div>
+      <div class="tip"><b>WHO THIS IS FOR</b>Someone who already has <a href="https://hackops-academy.github.io/glacier/">Glacier</a> running and wants a real, safe, self-hosted target to point it at instead of hitting production sites during practice.</div>
+    </section>
+
+    <section class="module" id="m1">
+      <div class="module-eyebrow"><span class="num">01</span>MODULE 01</div>
+      <h2>Installation &amp; setup</h2>
+      <p class="goal">One script, one URL, a known state on every boot.</p>
+      <pre><span class="kw">git</span> clone https://github.com/hackops-academy/vuln99.git
+<span class="kw">cd</span> vuln99
+./setup.sh          <span class="cm"># macOS/Linux — venv, deps, and run in one step</span>
+<span class="cm"># .\setup.ps1        Windows PowerShell equivalent</span></pre>
+      <p>Or by hand:</p>
+      <pre>python3 -m venv venv
+<span class="kw">source</span> venv/bin/activate   <span class="cm"># Windows: venv\Scripts\activate</span>
+pip install -r requirements.txt
+python run.py</pre>
+      <p>Open <code class="inline">http://127.0.0.1:5099</code>. The database is SQLite and reseeds from scratch on every process start — you always boot into a known, clean state.</p>
+      <div class="grid-2">
+        <div class="kv"><div class="k">admin</div><div class="v">admin123</div></div>
+        <div class="kv"><div class="k">john_doe / alice_smith / bob_jones</div><div class="v">password123</div></div>
+      </div>
+      <div class="tip"><b>PRO HABIT</b>Run <code class="inline">./setup.sh --test</code> (or <code class="inline">.\setup.ps1 -Test</code>) once right after install — the pytest smoke suite boots the app and hits every route at every difficulty tier to catch a broken install before you blame the scanner for a bad target.</div>
+    </section>
+
+    <section class="module" id="m2">
+      <div class="module-eyebrow"><span class="num">02</span>MODULE 02</div>
+      <h2>Anatomy of the range</h2>
+      <p class="goal">Know the shape of the target before you start pulling triggers.</p>
+      <p>Vuln99 is a full storefront — catalog, cart, checkout, reviews, accounts, and an admin panel — not just a page of isolated bugs. 24 vulnerabilities are wired into that realistic flow, each independently switchable between low/medium/hard from <b style="color:var(--text-primary);">Admin → Difficulty settings</b> (<code class="inline">/admin/settings</code>).</p>
+      <p>Every vulnerable route that has a hardened counterpart ships a <code class="inline">/safe-*</code> sibling — <code class="inline">/safe-search</code>, <code class="inline">/safe-product</code>, <code class="inline">/safe-read-file</code>, <code class="inline">/safe-ping</code>, <code class="inline">/safe-go</code> — the same pattern as Glacier's old test app, useful for confirming a scanner correctly stays quiet on a hardened endpoint instead of just firing on everything.</p>
+      <div class="tip"><b>PRO HABIT</b>Visit <code class="inline">/</code> first — the catalog page doubles as a QA diagnostics panel listing every route in the app, tagged. It's the fastest way to see the full attack surface before you touch the scanner.</div>
+    </section>
+
+    <section class="module" id="m3">
+      <div class="module-eyebrow"><span class="num">03</span>MODULE 03</div>
+      <h2>Difficulty tiers</h2>
+      <p class="goal">The same bug, three ways — pick the lesson you actually want to teach or learn.</p>
+      <table>
+        <tr><th>Tier</th><th>What it means</th></tr>
+        <tr><td><span class="diff low">LOW</span></td><td>Fully vulnerable, no mitigation — what Glacier's scanner is tuned to detect.</td></tr>
+        <tr><td><span class="diff med">MEDIUM</span></td><td>A partial, real-world-common mitigation that's still bypassable (blacklist filtering, naive escaping, rate-limiting mistaken for access control) — practice filter/WAF bypass here.</td></tr>
+        <tr><td><span class="diff hard">HARD</span></td><td>Properly fixed — parameterized queries, allow-lists, real session checks, CSP-safe encoding.</td></tr>
+      </table>
+      <p>Bulk "set all to low/medium/hard" buttons live on the same settings screen. Without a valid login, if <code class="inline">broken_admin</code> is set to <span class="diff low">LOW</span>, visit <code class="inline">/admin/become-admin-demo</code> to set the forgeable <code class="inline">is_admin</code> cookie the low-difficulty check trusts.</p>
+      <div class="tip"><b>PRO HABIT</b>Start every practice session at <span class="diff low">LOW</span> across the board to confirm Glacier finds everything it should, then bump specific vulnerabilities to <span class="diff med">MEDIUM</span> and re-run to practice bypasses instead of just detection.</div>
+    </section>
+
+    <section class="module" id="m4">
+      <div class="module-eyebrow"><span class="num">04</span>MODULE 04</div>
+      <h2>SQL injection family</h2>
+      <p class="goal">Seven distinct SQLi surfaces — from a URL parameter to an HTTP header.</p>
+      <table>
+        <tr><th>Key</th><th>Where</th><th>Type</th></tr>
+        <tr><td><code class="inline">login_sqli</code></td><td><code class="inline">/login</code></td><td>Auth bypass</td></tr>
+        <tr><td><code class="inline">search_sqli</code></td><td><code class="inline">/search?q=</code></td><td>UNION-based</td></tr>
+        <tr><td><code class="inline">product_sqli</code></td><td><code class="inline">/product?id=</code></td><td>Error-based</td></tr>
+        <tr><td><code class="inline">blind_sqli_bool</code></td><td><code class="inline">/blind-product?id=</code></td><td>Boolean-blind</td></tr>
+        <tr><td><code class="inline">blind_sqli_time</code></td><td><code class="inline">/slow-product?id=</code></td><td>Time-blind</td></tr>
+        <tr><td><code class="inline">recommend_sqli</code></td><td><code class="inline">last_category</code> cookie on <code class="inline">/recommend</code></td><td>Cookie-based</td></tr>
+        <tr><td><code class="inline">header_sqli</code></td><td><code class="inline">User-Agent</code>/<code class="inline">X-Forwarded-For</code> on <code class="inline">/category</code></td><td>HTTP header, sink at <code class="inline">/admin/logs</code></td></tr>
+      </table>
+      <div class="glacier-link"><b>🧊 GLACIER SIDE</b>These first five map directly to Glacier's active scanner's error-based, boolean-blind, and time-blind SQLi checks — point <code class="inline">POST /api/active/scan</code> at each URL with <code class="inline">confirm: true</code> and compare what it flags against this table. The cookie- and header-based ones won't show up in a URL-only scan — that's what Repeater and Fuzzer (Module 10) are for.</div>
+      <div class="tip"><b>PRO HABIT</b>Always confirm <code class="inline">header_sqli</code> manually — set a crafted <code class="inline">User-Agent</code> with <code class="inline">curl -A</code>, hit <code class="inline">/category</code>, then check <code class="inline">/admin/logs</code> as admin to see the raw value land in the database.</div>
+    </section>
+
+    <section class="module" id="m5">
+      <div class="module-eyebrow"><span class="num">05</span>MODULE 05</div>
+      <h2>XSS &amp; CSRF</h2>
+      <p class="goal">Reflected, stored, and the request-forgery classic — right where a scanner and a human diverge.</p>
+      <table>
+        <tr><th>Key</th><th>Where</th></tr>
+        <tr><td><code class="inline">reflected_xss</code></td><td><code class="inline">/search?q=</code></td></tr>
+        <tr><td><code class="inline">stored_xss</code></td><td>Product reviews (<code class="inline">/product</code>, <code class="inline">/reviews</code>)</td></tr>
+        <tr><td><code class="inline">csrf</code></td><td><code class="inline">/checkout</code></td></tr>
+      </table>
+      <div class="glacier-link"><b>🧊 GLACIER SIDE</b>Reflected XSS on <code class="inline">/search</code> is exactly what Glacier's active scanner's reflection + context probing is built for. Stored XSS in reviews won't show up in a single-request active scan — submit a review manually, then revisit <code class="inline">/product</code> to see it fire, the same way a human tester would.</div>
+      <div class="tip"><b>PRO HABIT</b>CSRF on <code class="inline">/checkout</code> is a good one to walk through by hand in Repeater — strip the session cookie, replay the request, and see exactly what protection (or lack of it) is actually in place at each difficulty tier.</div>
+    </section>
+
+    <section class="module" id="m6">
+      <div class="module-eyebrow"><span class="num">06</span>MODULE 06</div>
+      <h2>Access control &amp; logic flaws</h2>
+      <p class="goal">The bugs no scanner finds without help — this is where manual testing earns its keep.</p>
+      <table>
+        <tr><th>Key</th><th>Where</th></tr>
+        <tr><td><code class="inline">idor_orders</code></td><td><code class="inline">/orders</code>, <code class="inline">/account?id=</code></td></tr>
+        <tr><td><code class="inline">broken_admin</code></td><td><code class="inline">/admin</code>, <code class="inline">/admin/settings</code></td></tr>
+        <tr><td><code class="inline">mass_assignment</code></td><td><code class="inline">/account</code> (POST)</td></tr>
+        <tr><td><code class="inline">price_tamper</code></td><td><code class="inline">/cart</code></td></tr>
+      </table>
+      <div class="warn"><b>THIS IS WHY MODULE 07 OF GLACIER'S COURSE SAYS "MANUALLY VERIFY"</b>None of these four are payload-based — Glacier's automated scanner will not flag them. Walk each one by hand in Repeater: increment an order ID, POST an extra <code class="inline">role</code> field, edit a cart's price parameter before checkout.</div>
+      <div class="tip"><b>PRO HABIT</b>Log in as two different test accounts in two browser profiles and try to view one account's order from the other's session — IDOR findings are most convincing in a report when you can show exactly whose data leaked to whom.</div>
+    </section>
+
+    <section class="module" id="m7">
+      <div class="module-eyebrow"><span class="num">07</span>MODULE 07</div>
+      <h2>File &amp; command vulnerabilities</h2>
+      <p class="goal">Where the scanner's path-traversal and command-injection checks earn their keep.</p>
+      <table>
+        <tr><th>Key</th><th>Where</th></tr>
+        <tr><td><code class="inline">path_traversal</code></td><td><code class="inline">/read-file</code></td></tr>
+        <tr><td><code class="inline">file_upload</code></td><td><code class="inline">/account/avatar</code></td></tr>
+        <tr><td><code class="inline">command_injection</code></td><td><code class="inline">/ping</code>, <code class="inline">/ping-slow</code></td></tr>
+      </table>
+      <div class="glacier-link"><b>🧊 GLACIER SIDE</b><code class="inline">/read-file</code> and <code class="inline">/ping</code> / <code class="inline">/ping-slow</code> are the exact route shapes Glacier's path-traversal/LFI and reflected+blind command-injection checks were tuned against — a clean active scan here is a good regression test any time you modify <code class="inline">active/scanner.py</code>. <code class="inline">file_upload</code> is manual-only; there's no automated check for it in Glacier today.</div>
+    </section>
+
+    <section class="module" id="m8">
+      <div class="module-eyebrow"><span class="num">08</span>MODULE 08</div>
+      <h2>SSRF, XXE, SSTI &amp; deserialization</h2>
+      <p class="goal">The admin-only advanced labs — highest impact, easiest to under-scope.</p>
+      <table>
+        <tr><th>Key</th><th>Where</th></tr>
+        <tr><td><code class="inline">ssrf</code></td><td><code class="inline">/admin/import-image</code></td></tr>
+        <tr><td><code class="inline">xxe</code></td><td><code class="inline">/admin/import-orders</code></td></tr>
+        <tr><td><code class="inline">ssti</code></td><td><code class="inline">/admin/email-preview</code></td></tr>
+        <tr><td><code class="inline">insecure_deserialization</code></td><td>"Remember me" on <code class="inline">/login</code> (pickle)</td></tr>
+      </table>
+      <p>All four are admin-gated — you'll need a valid admin session (or the <code class="inline">/admin/become-admin-demo</code> shortcut from Module 03) to reach them. None of these have automated Glacier checks; they're deliberately manual-only labs.</p>
+      <div class="warn"><b>HANDLE WITH CARE, EVEN IN A LAB</b>Insecure deserialization via a pickle-based "Remember me" cookie can mean arbitrary code execution on whatever machine is running Vuln99. Keep this strictly on localhost or an isolated VM — this is exactly the kind of finding that's catastrophic outside a lab.</div>
+    </section>
+
+    <section class="module" id="m9">
+      <div class="module-eyebrow"><span class="num">09</span>MODULE 09</div>
+      <h2>Redirects &amp; misc findings</h2>
+      <p class="goal">The smaller findings that round out a full report.</p>
+      <table>
+        <tr><th>Key</th><th>Where</th></tr>
+        <tr><td><code class="inline">open_redirect</code></td><td><code class="inline">/go</code></td></tr>
+        <tr><td><code class="inline">weak_crypto</code></td><td><code class="inline">/register</code> (unsalted MD5)</td></tr>
+        <tr><td><code class="inline">verbose_errors</code></td><td><code class="inline">/product</code>, <code class="inline">/version</code></td></tr>
+      </table>
+      <div class="glacier-link"><b>🧊 GLACIER SIDE</b><code class="inline">/go</code> is the exact shape Glacier's open-redirect check (Location-header verification) expects — a reliable one to confirm the scanner's still behaving correctly after any change. <code class="inline">weak_crypto</code> and <code class="inline">verbose_errors</code> are Glacier's passive-scanner territory, not active — run a passive pass over a full walkthrough to catch both.</div>
+    </section>
+
+    <section class="module" id="m10">
+      <div class="module-eyebrow"><span class="num">10</span>MODULE 10</div>
+      <h2>Running Glacier against Vuln99</h2>
+      <p class="goal">Where the two courses actually meet.</p>
+      <p>Point Glacier's proxy and active scanner at <code class="inline">http://127.0.0.1:5099/</code> with the injection-family and <code class="inline">broken_admin</code> vulnerabilities set to <span class="diff low">LOW</span> (the default). Route paths, parameter names (<code class="inline">username</code>/<code class="inline">password</code>, <code class="inline">q</code>, <code class="inline">id</code>, <code class="inline">file</code>, <code class="inline">host</code>, <code class="inline">url</code>), and the SQL error format (<code class="inline">sqlite3.OperationalError</code>) all match what Glacier's <code class="inline">check_*</code> functions expect out of the box.</p>
+      <pre><span class="cm"># from Glacier's course, Module 04</span>
+<span class="kw">POST</span> /api/spider/start
+{ <span class="str">"start_url"</span>: <span class="str">"http://127.0.0.1:5099/"</span> }
+
+<span class="cm"># from Glacier's course, Module 05 — confirm scope is localhost before running this</span>
+<span class="kw">POST</span> /api/active/scan
+{ <span class="str">"url"</span>: <span class="str">"http://127.0.0.1:5099/product?id=1"</span>, <span class="str">"confirm"</span>: true }</pre>
+      <div class="tip"><b>PRO HABIT</b>Log in first as <code class="inline">john_doe</code> and pass the session cookie via Glacier's <code class="inline">auth</code> object (cookie mode — see Glacier's Module 06) so the spider and active scanner reach the authenticated routes: <code class="inline">/account</code>, <code class="inline">/orders</code>, <code class="inline">/recommend</code>.</div>
+    </section>
+
+    <section class="module" id="m11">
+      <div class="module-eyebrow"><span class="num">11</span>MODULE 11</div>
+      <h2>The combined methodology</h2>
+      <p class="goal">Glacier's methodology, run end-to-end against this specific range.</p>
+      <div class="flow" style="flex-direction:column;align-items:flex-start;">
+        <div class="box">1 — <code class="inline" style="background:transparent;border:none;">./setup.sh</code>, confirm <span class="diff low">LOW</span> across the board, log the reseed</div>
+        <div class="box">2 — Walk the storefront manually and authenticated (catalog → cart → checkout → reviews)</div>
+        <div class="box">3 — Run Glacier's passive scan; expect <code class="inline" style="background:transparent;border:none;">weak_crypto</code> and <code class="inline" style="background:transparent;border:none;">verbose_errors</code> hits</div>
+        <div class="box">4 — Spider from an authenticated deep URL (<code class="inline" style="background:transparent;border:none;">/account</code>)</div>
+        <div class="box">5 — Active-scan the SQLi/XSS/traversal/redirect/command-injection surfaces</div>
+        <div class="box">6 — Manually test IDOR, broken_admin, mass_assignment, price_tamper in Repeater</div>
+        <div class="box">7 — Manually test the admin-only SSRF/XXE/SSTI/deserialization labs</div>
+        <div class="box">8 — Cross-check every hit against Module 02–09's table above</div>
+        <div class="box">9 — Bump found vulnerabilities to <span class="diff med">MEDIUM</span> and repeat steps 3–7 for bypass practice</div>
+      </div>
+      <div class="tip"><b>WHAT SEPARATES A PROFESSIONAL RUN FROM A DEFAULT RUN</b>Same lesson as Glacier's own Module 11: the automated scan only ever covers a fraction of this catalog. Steps 6 and 7 — the logic flaws and admin-only labs — are where the real skill shows up.</div>
+    </section>
+
+    <section class="module" id="m12">
+      <div class="module-eyebrow"><span class="num">12</span>MODULE 12</div>
+      <h2>Multi-VM labs &amp; next steps</h2>
+      <p class="goal">Graduating from localhost without losing the safety rails.</p>
+      <p>If you're running a real isolated lab (a scanner on one VM, Vuln99 on another, both on a private network with no route to the internet), override the bind address:</p>
+      <pre>VULN99_HOST=0.0.0.0 VULN99_PORT=5099 python run.py</pre>
+      <p><code class="inline">run.py</code> prints a warning banner whenever it's bound to anything other than localhost — treat that banner as a hard stop-and-check, not noise. Every request lands in <code class="inline">logs/access.log</code> and every admin action in <code class="inline">logs/events.log</code>, both handy for lining up what the app saw against a simultaneous <code class="inline">nmap</code> scan or Wireshark capture.</p>
+      <div class="warn"><b>NEVER ON A SHARED OR CORPORATE NETWORK</b>This app has real, working exploits with no additional sandboxing. Only bind beyond localhost on a host that has no route to the internet or a shared/corporate network.</div>
+      <ol>
+        <li>Run the full Module 11 methodology against Vuln99 at <span class="diff low">LOW</span>, then again at <span class="diff med">MEDIUM</span>.</li>
+        <li>Diff your two Glacier findings exports and see exactly which findings a real-world mitigation would have hidden from an automated scan alone.</li>
+        <li>Once this feels routine, go back to <a href="https://hackops-academy.github.io/glacier/">Glacier's own course</a> Module 11 and run its full methodology against Vuln99 as the final exercise.</li>
+      </ol>
+      <div class="tip"><b>NEXT</b>Glacier and Vuln99 are meant to be practiced together on a loop — new Glacier scanner features get their regression check here, and new Vuln99 vulnerabilities are worth throwing at Glacier to see what it misses.</div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  VULN99 — built by HackOps Academy · the live-fire range for <a href="https://hackops-academy.github.io/glacier/">Glacier</a> · <a href="https://github.com/hackops-academy/vuln99">View on GitHub</a>
+</footer>
+
+<script>
+(function(){
+  var items = Array.prototype.slice.call(document.querySelectorAll('.toc-item'));
+  var sections = items.map(function(i){ return document.getElementById(i.dataset.target); });
+  var crack = document.getElementById('crack');
+  items.forEach(function(item){
+    item.addEventListener('click', function(e){
+      e.preventDefault();
+      var target = document.getElementById(item.dataset.target);
+      if(target){ target.scrollIntoView({behavior:'smooth', block:'start'}); }
+      document.getElementById('toc').classList.remove('open');
+    });
+  });
+  function onScroll(){
+    var y = window.scrollY + 120;
+    var activeIdx = 0;
+    for(var i=0;i<sections.length;i++){ if(sections[i] && sections[i].offsetTop <= y){ activeIdx = i; } }
+    items.forEach(function(it,idx){ it.classList.toggle('active', idx===activeIdx); });
+    var doc = document.documentElement;
+    var pct = (window.scrollY) / (doc.scrollHeight - window.innerHeight) * 100;
+    crack.style.setProperty('--progress', Math.min(100, Math.max(0,pct)) + '%');
+  }
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+  var toc = document.getElementById('toc');
+  if(window.matchMedia('(max-width:900px)').matches){
+    toc.addEventListener('click', function(e){ if(e.target === toc){ toc.classList.toggle('open'); } });
+  }
+})();
+</script>
+</body>
+</html>
